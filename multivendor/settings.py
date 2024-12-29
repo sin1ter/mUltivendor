@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     'django_filters',
+    'drf_spectacular',
     'rest_framework',
     'rest_framework.authtoken',
     'accounts',
@@ -140,6 +141,7 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
         'rest_framework.filters.SearchFilter',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 from datetime import timedelta
@@ -147,4 +149,11 @@ from datetime import timedelta
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+}
+
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'mUltivendor API',
+    'DESCRIPTION': 'mUltivendor API"s',
+    'VERSION': '1.0.0'
 }
