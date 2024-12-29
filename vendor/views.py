@@ -1,6 +1,6 @@
 from django.db.models import Sum, F
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import generics, permissions, viewsets, response, status, views
+from rest_framework import generics, permissions, viewsets, response, status, views, filters, pagination
 from .models import Vendor, Category, Subcategory, Product
 from .serializers import VendorSerializer, CategorySerializer, SubcategorySerializer, ProductSerializer
 from accounts.permissions import IsVendor, IsAdmin, IsVendorOrAdminOrReadOnly
@@ -15,18 +15,24 @@ class VendorProfileView(generics.RetrieveUpdateAPIView):
         vendor, created = Vendor.objects.get_or_create(user=self.request.user)
         return vendor
 
+class StandardResultsSetPagination(pagination.PageNumberPagination):
+    page_size = 2
+    page_size_query_param = 'page_size'
+    max_page_size = 50
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [permissions.IsAuthenticated, IsVendorOrAdminOrReadOnly]
+    pagination_class = StandardResultsSetPagination
 
 
 class SubcategoryViewSet(viewsets.ModelViewSet):
     queryset = Subcategory.objects.all()
     serializer_class = SubcategorySerializer
     permission_classes = [permissions.IsAuthenticated, IsVendorOrAdminOrReadOnly]
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         user = self.request.user
@@ -38,16 +44,16 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['vendor', 'category', 'subcategory', 'price']
+    pagination_class = StandardResultsSetPagination  
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]  
+    filterset_fields = ['vendor', 'category', 'subcategory', 'price']  
+    search_fields = ['name']  
 
     def get_queryset(self):
         user = self.request.user
         if user.role == 'vendor':
             return Product.objects.filter(vendor=user.vendor_profile)
-        elif user.role == 'admin':
-            return Product.objects.all()
-        elif user.role == 'customers':
+        else:
             return Product.objects.all()
         return Product.objects.none()
 
