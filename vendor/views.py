@@ -1,4 +1,4 @@
-from django.db.models import Sum
+from django.db.models import Sum, F
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, permissions, viewsets, response, status, views
 from .models import Vendor, Category, Subcategory, Product
@@ -55,32 +55,25 @@ class ProductViewSet(viewsets.ModelViewSet):
         user = self.request.user
         serializer.save(vendor=user.vendor_profile)
     
-from django.db.models import Sum, F
 
 class VendorDashboardView(views.APIView):
     permission_classes = [permissions.IsAuthenticated, IsVendor]
 
     def get(self, request):
-        # Ensure the user is a vendor
         if request.user.role != 'vendor':
             return response.Response(
                 {"detail": "You do not have permission to view this data."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # Get the vendor profile for the logged-in user
         vendor_profile = request.user.vendor_profile
 
-        # Calculate total products listed by the vendor
         total_products = Product.objects.filter(vendor=vendor_profile).count()
 
-        # Get all cart items for the vendor's products
         cart_items = CartItem.objects.filter(product__vendor=vendor_profile)
 
-        # Calculate total orders for the vendor
         total_orders = cart_items.values('cart').distinct().count()
 
-        # Calculate total revenue for the vendor
         total_revenue = cart_items.aggregate(
             revenue=Sum(F('quantity') * F('product__price'))
         )['revenue'] or 0.00
