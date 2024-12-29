@@ -2,6 +2,10 @@
 
 # Multivendor
 
+## Live Link
+```
+https://multivendor-4.onrender.com/
+```
   
 ## Run Locally
 
