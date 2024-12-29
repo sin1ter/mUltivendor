@@ -4,7 +4,7 @@ from rest_framework import generics, permissions, viewsets, response, status, vi
 from .models import Vendor, Category, Subcategory, Product
 from .serializers import VendorSerializer, CategorySerializer, SubcategorySerializer, ProductSerializer
 from accounts.permissions import IsVendor, IsAdmin, IsVendorOrAdminOrReadOnly
-from cart.models import Order
+from cart.models import *
 from accounts.models import CustomUser
 
 class VendorProfileView(generics.RetrieveUpdateAPIView):
@@ -55,28 +55,44 @@ class ProductViewSet(viewsets.ModelViewSet):
         user = self.request.user
         serializer.save(vendor=user.vendor_profile)
     
+from django.db.models import Sum, F
 
 class VendorDashboardView(views.APIView):
     permission_classes = [permissions.IsAuthenticated, IsVendor]
 
     def get(self, request):
+        # Ensure the user is a vendor
         if request.user.role != 'vendor':
-            return response.Response({"detail": "You do not have permission to view this data."}, status=status.HTTP_403_FORBIDDEN)
+            return response.Response(
+                {"detail": "You do not have permission to view this data."},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
-        total_products = Product.objects.filter(vendor=request.user.vendor_profile).count()
+        # Get the vendor profile for the logged-in user
+        vendor_profile = request.user.vendor_profile
 
-        orders = Order.objects.filter(user=request.user).all()
-        total_orders = orders.count()
+        # Calculate total products listed by the vendor
+        total_products = Product.objects.filter(vendor=vendor_profile).count()
 
-        total_revenue = orders.aggregate(Sum('total_cost'))['total_cost__sum'] or 0.00
+        # Get all cart items for the vendor's products
+        cart_items = CartItem.objects.filter(product__vendor=vendor_profile)
+
+        # Calculate total orders for the vendor
+        total_orders = cart_items.values('cart').distinct().count()
+
+        # Calculate total revenue for the vendor
+        total_revenue = cart_items.aggregate(
+            revenue=Sum(F('quantity') * F('product__price'))
+        )['revenue'] or 0.00
 
         analytics_data = {
             "total_products": total_products,
             "total_orders": total_orders,
-            "total_revenue": total_revenue
+            "total_revenue": total_revenue,
         }
 
         return response.Response(analytics_data, status=status.HTTP_200_OK)
+
     
 class AdminDashboardView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
